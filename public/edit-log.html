@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Fuel Log</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h2>Edit Fuel Log</h2>
+  <nav>
+    <a href="/dashboard">← Back to Dashboard</a>
+  </nav>
+  
+  <form id="edit-form">
+    <input type="hidden" id="logId" name="logId">
+    <div>
+      <label for="carName">Car Name:</label>
+      <input id="carName" name="carName" type="text" required placeholder="Enter car name" />
+    </div>
+    <div>
+      <label for="amount">Amount (gal):</label>
+      <input id="amount" name="amount" type="number" step="0.01" required placeholder="Enter fuel amount" />
+    </div>
+    <div>
+      <label for="pricePerUnit">Price per Unit ($):</label>
+      <input id="pricePerUnit" name="pricePerUnit" type="number" step="0.01" required placeholder="Enter price per gallon" />
+    </div>
+    <div>
+      <label for="mileage">Mileage:</label>
+      <input id="mileage" name="mileage" type="number" step="1" required placeholder="Enter current odometer reading" />
+    </div>
+    <div>
+      <label for="datetime">Date &amp; Time:</label>
+      <input id="datetime" name="datetime" type="datetime-local" required />
+    </div>
+    <button type="submit">Update Log</button>
+  </form>
+
+  <script>
+    // Get log ID from URL query parameter
+    const params = new URLSearchParams(window.location.search);
+    const logId = params.get('id');
+    
+    if (!logId) {
+      // Redirect back to dashboard if no ID provided
+      window.location = '/dashboard';
+    }
+    
+    // Set the log ID in the hidden field
+    document.getElementById('logId').value = logId;
+    
+    // Load the log data
+    async function loadLogData() {
+      try {
+        const res = await fetch(`/api/fuel-logs`);
+        const logs = await res.json();
+        
+        // Find the log with the matching ID
+        const log = logs.find(l => l._id === logId);
+        
+        if (!log) {
+          alert('Log not found');
+          window.location = '/dashboard';
+          return;
+        }
+        
+        // Populate the form with the log data
+        document.getElementById('carName').value = log.carName || '';
+        document.getElementById('amount').value = log.amount;
+        document.getElementById('pricePerUnit').value = log.pricePerUnit;
+        document.getElementById('mileage').value = log.mileage;
+        document.getElementById('datetime').value = new Date(log.datetime).toISOString().slice(0, 16);
+      } catch (err) {
+        console.error('Error loading log data:', err);
+        alert('Failed to load log data');
+      }
+    }
+    
+    // Handle form submission
+    document.getElementById('edit-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const formData = new FormData(e.target);
+      const data = {
+        carName: formData.get('carName'),
+        amount: formData.get('amount'),
+        pricePerUnit: formData.get('pricePerUnit'),
+        mileage: formData.get('mileage'),
+        datetime: formData.get('datetime')
+      };
+      
+      try {
+        const res = await fetch(`/api/fuel-logs/${logId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        if (res.ok) {
+          window.location = '/dashboard';
+        } else {
+          const errorText = await res.text();
+          alert(`Failed to update log: ${errorText}`);
+        }
+      } catch (err) {
+        console.error('Error updating log:', err);
+        alert('Failed to update log');
+      }
+    });
+    
+    // Load log data when page loads
+    window.addEventListener('load', loadLogData);
+  </script>
+</body>
+</html> 

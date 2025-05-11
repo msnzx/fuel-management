@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>Your Dashboard</h1>
+  <nav>
+    <a href="/new-log">+ New Fuel Log</a>
+    <a href="/stats">View Stats</a>
+    <a href="/logout">Logout</a>
+  </nav>
+
+  <section>
+    <h2>Fuel Logs</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Car Name</th>
+          <th>Date &amp; Time</th>
+          <th>Mileage</th>
+          <th>Amount (gal)</th>
+          <th>Price/Unit ($)</th>
+          <th>Total Cost</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="logs-body">
+        <!-- rows go here -->
+      </tbody>
+    </table>
+  </section>
+
+  <script>
+    async function loadLogs() {
+      const res = await fetch('/api/fuel-logs');
+      const logs = await res.json();
+      const tbody = document.getElementById('logs-body');
+      tbody.innerHTML = '';
+      logs.sort((a, b) => new Date(b.datetime) - new Date(a.datetime))
+          .forEach(log => {
+        const totalCost = (log.amount * log.pricePerUnit).toFixed(2);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${log.carName || 'N/A'}</td>
+          <td>${new Date(log.datetime).toLocaleString()}</td>
+          <td>${log.mileage}</td>
+          <td>${log.amount.toFixed(2)}</td>
+          <td>${log.pricePerUnit.toFixed(2)}</td>
+          <td>$${totalCost}</td>
+          <td class="action-buttons">
+            <button class="edit-btn" data-id="${log._id}">Edit</button>
+            <button class="delete-btn" data-id="${log._id}">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Add event listeners to edit buttons
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const logId = btn.getAttribute('data-id');
+          window.location.href = `/edit-log?id=${logId}`;
+        });
+      });
+
+      // Add event listeners to delete buttons
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const logId = btn.getAttribute('data-id');
+          if (confirm('Are you sure you want to delete this fuel log?')) {
+            try {
+              const res = await fetch(`/api/fuel-logs/${logId}`, {
+                method: 'DELETE'
+              });
+              
+              if (res.ok) {
+                loadLogs(); // Reload the logs
+              } else {
+                const errorText = await res.text();
+                alert(`Failed to delete log: ${errorText}`);
+              }
+            } catch (err) {
+              console.error('Error deleting log:', err);
+              alert('Failed to delete log');
+            }
+          }
+        });
+      });
+    }
+    window.onload = loadLogs;
+  </script>
+</body>
+</html>
